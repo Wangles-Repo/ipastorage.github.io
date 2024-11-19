@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>File Storage with Sharing</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #fileList { margin-top: 20px; }
+        .file-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: #f4f4f4; 
+            padding: 10px; 
+            margin: 5px 0;
+        }
+        #copySuccess { color: green; margin-left: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <h1>File Storage</h1>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload File</button>
+    <div id="fileList"></div>
+
+    <script>
+        function generateShareableLink(fileData) {
+            return `data:application/octet-stream;base64,${fileData.split(',')[1]}`;
+        }
+
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const files = JSON.parse(localStorage.getItem('files') || '[]');
+                const newFile = {
+                    id: Date.now(),
+                    name: file.name,
+                    type: file.type,
+                    data: e.target.result
+                };
+                files.push(newFile);
+                localStorage.setItem('files', JSON.stringify(files));
+                displayFiles();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayFiles() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            const files = JSON.parse(localStorage.getItem('files') || '[]');
+            
+            files.forEach((file) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                const shareableLink = generateShareableLink(file.data);
+                fileItem.innerHTML = `
+                    ${file.name}
+                    <div>
+                        <button onclick="copyLink('${shareableLink}')">Copy Link</button>
+                        <button onclick="downloadFile('${shareableLink}', '${file.name}')">Download</button>
+                        <button onclick="deleteFile(${file.id})">Delete</button>
+                    </div>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function copyLink(link) {
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Shareable link copied to clipboard!');
+            });
+        }
+
+        function downloadFile(fileData, fileName) {
+            const link = document.createElement('a');
+            link.href = fileData;
+            link.download = fileName;
+            link.click();
+        }
+
+        function deleteFile(fileId) {
+            const files = JSON.parse(localStorage.getItem('files') || '[]');
+            const updatedFiles = files.filter(file => file.id !== fileId);
+            localStorage.setItem('files', JSON.stringify(updatedFiles));
+            displayFiles();
+        }
+
+        // Initial display of files
+        displayFiles();
+    </script>
+</body>
+</html>
